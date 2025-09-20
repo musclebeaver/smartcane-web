@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+/* eslint-disable react-refresh/only-export-components */
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AuthAPI } from "@/lib/api";
 
 const AuthCtx = createContext(null);
@@ -9,19 +10,27 @@ export function AuthProvider({ children }) {
   const [refreshToken, setRefreshToken] = useState(localStorage.getItem("sc_refresh") || "");
   const [me, setMe] = useState(null);
 
-  const saveTokens = (a, r) => {
-    setAccessToken(a || ""); setRefreshToken(r || "");
+  const saveTokens = useCallback((a, r) => {
+    setAccessToken(a || "");
+    setRefreshToken(r || "");
     if (a) localStorage.setItem("sc_access", a); else localStorage.removeItem("sc_access");
     if (r) localStorage.setItem("sc_refresh", r); else localStorage.removeItem("sc_refresh");
-  };
-  const logout = () => { saveTokens("", ""); setMe(null); };
+  }, []);
 
-  const loadMe = async () => {
-    if (!accessToken) { setMe(null); return; }
+  const logout = useCallback(() => {
+    saveTokens("", "");
+    setMe(null);
+  }, [saveTokens]);
+
+  const loadMe = useCallback(async () => {
+    if (!accessToken) {
+      setMe(null);
+      return;
+    }
     try {
       const data = await AuthAPI.me(accessToken);
       setMe(data);
-    } catch (e) {
+    } catch {
       if (refreshToken) {
         try {
           const ref = await AuthAPI.refresh(refreshToken);
@@ -35,13 +44,15 @@ export function AuthProvider({ children }) {
         logout();
       }
     }
-  };
+  }, [accessToken, refreshToken, logout, saveTokens]);
 
-  useEffect(() => { loadMe(); /* eslint-disable-next-line */ }, [accessToken]);
+  useEffect(() => {
+    loadMe();
+  }, [loadMe]);
 
   const value = useMemo(
     () => ({ accessToken, refreshToken, me, saveTokens, logout, reloadMe: loadMe }),
-    [accessToken, refreshToken, me]
+    [accessToken, refreshToken, me, saveTokens, logout, loadMe]
   );
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
