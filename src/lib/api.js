@@ -20,3 +20,7 @@ export const AuthAPI = {
   refresh: (refreshToken)  => api("/api/auth/refresh", { method: "POST", body: { refreshToken } }),
   me:      (access)        => api("/api/identity/me",  { access }),
 };
+
+export const PaymentsAPI = {
+  getTossAutopayUrl: (access) => api("/api/payments/toss/autopay", { access }),
+};

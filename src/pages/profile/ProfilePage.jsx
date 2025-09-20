@@ -1,8 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut } from "lucide-react";
+import { PaymentsAPI } from "@/lib/api";
+import { Loader2, LogOut } from "lucide-react";
 
 const PROFILE_SECTIONS = [
   {
@@ -32,8 +33,39 @@ const KNOWN_PROFILE_KEYS = new Set(
 export default function ProfilePage() {
   const auth = useAuth();
   const profile = auth?.me;
+  const [tossLoading, setTossLoading] = useState(false);
+  const [tossError, setTossError] = useState("");
 
   const primaryName = profile?.nickname || profile?.name || profile?.email || "사용자";
+
+  const hasAccessToken = Boolean(auth?.accessToken);
+
+  const handleTossAutopay = async () => {
+    if (!hasAccessToken) {
+      setTossError("자동이체 등록은 로그인 후 이용 가능합니다.");
+      return;
+    }
+    setTossLoading(true);
+    setTossError("");
+    try {
+      const result = await PaymentsAPI.getTossAutopayUrl(auth.accessToken);
+      const targetUrl =
+        typeof result === "string"
+          ? result
+          : result?.url || result?.redirectUrl || result?.location || result?.autopayUrl;
+      if (!targetUrl) throw new Error("토스 자동이체 링크를 불러오지 못했습니다.");
+      window.location.href = targetUrl;
+    } catch (error) {
+      setTossError(error?.message || "토스 자동이체 링크를 불러오지 못했습니다.");
+    } finally {
+      setTossLoading(false);
+    }
+  };
+
+  const tossHelperText = !hasAccessToken
+    ? "자동이체 등록은 로그인 후 이용 가능합니다."
+    : tossError;
+  const tossHelperClass = hasAccessToken && tossError ? "text-red-600" : "text-muted-foreground";
 
   const initials = useMemo(() => {
     if (!primaryName) return "?";
@@ -121,6 +153,24 @@ export default function ProfilePage() {
               </div>
             </section>
           )}
+
+          <section className="space-y-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">결제 관리</h2>
+            <div className="space-y-2">
+              <Button
+                type="button"
+                onClick={handleTossAutopay}
+                disabled={!hasAccessToken || tossLoading}
+                className="w-full bg-[#0064FF] text-white hover:bg-[#0050CC]"
+              >
+                {tossLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {tossLoading ? "토스로 이동 중…" : "토스 자동이체 등록"}
+              </Button>
+              {tossHelperText && (
+                <p className={`text-sm ${tossHelperClass}`}>{tossHelperText}</p>
+              )}
+            </div>
+          </section>
         </CardContent>
       </Card>
     </div>
