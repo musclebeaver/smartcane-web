@@ -7,8 +7,8 @@ pipeline {
     APP        = 'smartcane-frontend'           // 이미지 이름
     IMAGE_BASE = "${REGISTRY}/${OWNER}/${APP}"
 
-    WEB_HOST       = '10.10.10.40'              // Web 서버 프라이빗 IP
-    WEB_SSH_PORT   = '30022'                    // SSH 포트 (다르면 변경)
+    WEB_HOST     = '10.10.10.40'                // Web 서버 프라이빗 IP
+    WEB_SSH_PORT = '30022'                      // SSH 포트
   }
 
   options { timestamps(); disableConcurrentBuilds(); ansiColor('xterm') }
@@ -20,9 +20,8 @@ pipeline {
 
     stage('Build & Push (GHCR)') {
       steps {
-        withCredentials([usernamePassword(credentialsId: 'smartcane-ghcr',
-                                          usernameVariable: 'GH_USER',
-                                          passwordVariable: 'GH_PAT')]) {
+        // NOTE: smartcane-ghcr = Secret text (PAT)
+        withCredentials([string(credentialsId: 'smartcane-ghcr', variable: 'GH_PAT')]) {
           script {
             // 브랜치 → 채널 태깅 규칙
             def branch  = env.BRANCH_NAME ?: 'local'
@@ -33,7 +32,7 @@ pipeline {
 
             sh """
               set -euo pipefail
-              echo "\$GH_PAT" | docker login ${REGISTRY} -u "${GH_USER}" --password-stdin
+              echo "\$GH_PAT" | docker login ${REGISTRY} -u "${OWNER}" --password-stdin
 
               docker build \
                 -t ${IMAGE_BASE}:${channel}-${BUILD_NUMBER} \
@@ -50,9 +49,8 @@ pipeline {
 
     stage('Deploy to Web') {
       steps {
-        withCredentials([usernamePassword(credentialsId: 'smartcane-ghcr',
-                                          usernameVariable: 'GH_USER',
-                                          passwordVariable: 'GH_PAT')]) {
+        // 원격에서도 GHCR 로그인 필요 → 같은 PAT 전달
+        withCredentials([string(credentialsId: 'smartcane-ghcr', variable: 'GH_PAT')]) {
           sshagent(credentials: ['web_ssh_smartcane']) {
             sh """
               set -euo pipefail
@@ -62,15 +60,15 @@ pipeline {
                 NAME="${APP}-${CHANNEL}"
 
                 # GHCR 로그인 후 이미지 pull
-                echo "${GH_PAT}" | docker login ${REGISTRY} -u "${GH_USER}" --password-stdin
+                echo "${GH_PAT}" | docker login ${REGISTRY} -u "${OWNER}" --password-stdin
                 docker pull "$IMAGE"
 
                 # 기존 컨테이너 정리
-                if [ "\$(docker ps -aq -f name=^${NAME}\$)" ]; then
+                if [ "\\\$(docker ps -aq -f name=^\\\${NAME}\\\$)" ]; then
                   docker rm -f "$NAME" || true
                 fi
 
-                # 포트 매핑: prod는 :80, 그 외는 :8080 (원하면 여기 바꿔도 됨)
+                # 포트 매핑: prod는 :80, 그 외는 :8080
                 PORT="-p 80:80"
                 if [ "${CHANNEL}" != "prod" ]; then
                   PORT="-p 8080:80"
@@ -107,8 +105,6 @@ pipeline {
         }
       }
     }
-    failure {
-      echo "❌ 배포 실패 - 콘솔 로그를 확인하세요"
-    }
+    failure { echo "❌ 배포 실패 - 콘솔 로그를 확인하세요" }
   }
 }
