@@ -66,7 +66,7 @@ pipeline {
                 docker pull "$IMAGE"
 
                 # 기존 컨테이너 정리
-                if [ "$(docker ps -aq -f name=^$NAME\$)" ]; then
+                if [ "\$(docker ps -aq -f name=^${NAME}\$)" ]; then
                   docker rm -f "$NAME" || true
                 fi
 
