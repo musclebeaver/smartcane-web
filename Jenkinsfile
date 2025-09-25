@@ -56,35 +56,42 @@ pipeline {
         ]) {
           sh """
             set -euo pipefail
-            ssh -i "\$SSH_KEY" -o StrictHostKeyChecking=no -p ${WEB_SSH_PORT} ${SSH_USER}@${WEB_HOST} '
+            ssh -i "\$SSH_KEY" -o StrictHostKeyChecking=no -p ${WEB_SSH_PORT} ${SSH_USER}@${WEB_HOST} "
               set -euo pipefail
 
-              IMAGE="${IMAGE_BASE}:${CHANNEL}"
-              NAME="${APP}-${CHANNEL}"
+              export GH_PAT='${GH_PAT}'
+              IMAGE='${IMAGE_BASE}:${CHANNEL}'
+              NAME='${APP}-${CHANNEL}'
 
-              echo "\$GH_PAT" | docker login ${REGISTRY} -u "${OWNER}" --password-stdin
-              docker pull "\$IMAGE"
+              # GHCR 로그인 & pull
+              echo \\"\$GH_PAT\\" | docker login ${REGISTRY} -u '${OWNER}' --password-stdin
+              docker pull \\"\$IMAGE\\"
 
-              if [ "\\\$(docker ps -aq -f name=^\\\${NAME}\\\$)" ]; then
-                docker rm -f "\$NAME" || true
+              # 기존 컨테이너 정리
+              if [ \\"\\\$(docker ps -aq -f name=^\\\${NAME}\\\$)\\" ]; then
+                docker rm -f \\"\$NAME\\" || true
               fi
 
-              PORT="-p 80:80"
-              if [ "${CHANNEL}" != "prod" ]; then
-                PORT="-p 8080:80"
+              # 포트: prod=80, 그외=8080
+              PORT='-p 80:80'
+              if [ '${CHANNEL}' != 'prod' ]; then
+                PORT='-p 8080:80'
               fi
 
-              docker run -d --name "\$NAME" --restart=always \$PORT "\$IMAGE"
+              # 실행
+              docker run -d --name \\"\$NAME\\" --restart=always \$PORT \\"\$IMAGE\\"
 
+              # 헬스체크
               sleep 2
-              if [ "${CHANNEL}" = "prod" ]; then
+              if [ '${CHANNEL}' = 'prod' ]; then
                 curl -I -sS http://127.0.0.1/ | head -n 1
               else
                 curl -I -sS http://127.0.0.1:8080/ | head -n 1
               fi
 
+              # 이미지 정리
               docker image prune -f >/dev/null 2>&1 || true
-            '
+            "
           """
         }
       }
