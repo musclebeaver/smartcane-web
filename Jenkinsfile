@@ -47,61 +47,61 @@ pipeline {
     }
 
     stage('Deploy to Web') {
-      steps {
-        withCredentials([
-          string(credentialsId: 'smartcane-ghcr', variable: 'GH_PAT'),
-          sshUserPrivateKey(credentialsId: 'web_ssh_smartcane',
-                            keyFileVariable: 'SSH_KEY',
-                            usernameVariable: 'SSH_USER')
-        ]) {
-          sh """
-            set -euo pipefail
+        steps {
+          withCredentials([
+            string(credentialsId: 'smartcane-ghcr', variable: 'GH_PAT'),
+            sshUserPrivateKey(credentialsId: 'web_ssh_smartcane',
+                              keyFileVariable: 'SSH_KEY',
+                              usernameVariable: 'SSH_USER')
+          ]) {
+            sh """
+              set -euo pipefail
 
-            # 원격에 넘길 환경변수들을 SSH 앞에 명시적으로 주입
-            ssh -i "\$SSH_KEY" -o StrictHostKeyChecking=no -p ${WEB_SSH_PORT} \\
-              ${SSH_USER}@${WEB_HOST} \\
-              GH_PAT='${GH_PAT}' \\
-              OWNER='${OWNER}' \\
-              REGISTRY='${REGISTRY}' \\
-              IMAGE='${IMAGE_BASE}:${CHANNEL}' \\
-              NAME='${APP}-${CHANNEL}' \\
-              CHANNEL='${CHANNEL}' \\
-              bash -seu -c '
-                set -euo pipefail
+              # 원격에서 bash로 실행하고, 스크립트를 표준입력(heredoc)으로 전달
+              ssh -i "\$SSH_KEY" -T -o StrictHostKeyChecking=no -p ${WEB_SSH_PORT} ${SSH_USER}@${WEB_HOST} bash -s <<EOSSH
+      set -Eeuo pipefail
 
-                # GHCR 로그인 & pull
-                echo "\$GH_PAT" | docker login "\$REGISTRY" -u "\$OWNER" --password-stdin
-                docker pull "\$IMAGE"
+      # --- Jenkins에서 전달한 값들을 원격 변수로 고정 ---
+      GH_PAT='${GH_PAT}'
+      OWNER='${OWNER}'
+      REGISTRY='${REGISTRY}'
+      IMAGE='${IMAGE_BASE}:${CHANNEL}'
+      NAME='${APP}-${CHANNEL}'
+      CHANNEL='${CHANNEL}'
 
-                # 기존 컨테이너 정리
-                if [ "\$(docker ps -aq -f name=^\${NAME}\$)" ]; then
-                  docker rm -f "\$NAME" || true
-                fi
+      # GHCR 로그인 & pull
+      echo "\$GH_PAT" | docker login "\$REGISTRY" -u "\$OWNER" --password-stdin
+      docker pull "\$IMAGE"
 
-                # 포트: prod=80, 나머지=8080
-                PORT="-p 80:80"
-                if [ "\$CHANNEL" != "prod" ]; then
-                  PORT="-p 8080:80"
-                fi
+      # 기존 컨테이너 정리
+      if [ "\$(docker ps -aq -f name=^\\\${NAME}\\\$)" ]; then
+        docker rm -f "\$NAME" || true
+      fi
 
-                # 실행
-                docker run -d --name "\$NAME" --restart=always \$PORT "\$IMAGE"
+      # 포트: prod=80, 나머지=8080
+      PORT="-p 80:80"
+      if [ "\$CHANNEL" != "prod" ]; then
+        PORT="-p 8080:80"
+      fi
 
-                # 헬스체크
-                sleep 2
-                if [ "\$CHANNEL" = "prod" ]; then
-                  curl -I -sS http://127.0.0.1/ | head -n 1
-                else
-                  curl -I -sS http://127.0.0.1:8080/ | head -n 1
-                fi
+      # 실행
+      docker run -d --name "\$NAME" --restart=always \$PORT "\$IMAGE"
 
-                # 이미지 정리
-                docker image prune -f >/dev/null 2>&1 || true
-              '
-          """
+      # 헬스체크
+      sleep 2
+      if [ "\$CHANNEL" = "prod" ]; then
+        curl -I -sS http://127.0.0.1/ | head -n 1
+      else
+        curl -I -sS http://127.0.0.1:8080/ | head -n 1
+      fi
+
+      # 이미지 정리
+      docker image prune -f >/dev/null 2>&1 || true
+      EOSSH
+            """
+          }
         }
       }
-    }
   }
 
   post {
