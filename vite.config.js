@@ -2,6 +2,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { fileURLToPath, URL } from 'node:url'
+import process from 'node:process'
 
 export default defineConfig(({ mode }) => {
   // 현재 mode(dev/prod 등)에 맞는 .env 파일 로드

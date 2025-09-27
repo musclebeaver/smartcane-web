@@ -24,3 +24,10 @@ export const AuthAPI = {
 export const PaymentsAPI = {
   getTossAutopayUrl: (access) => api("/api/payments/toss/autopay", { access }),
 };
+
+export const DevicesAPI = {
+  list:    (access)         => api("/api/devices",            { access }),
+  detail:  (deviceId, access) => api(`/api/devices/${deviceId}`, { access }),
+  register: (payload, access) => api("/api/devices",          { method: "POST", body: payload, access }),
+  remove:  (deviceId, access) => api(`/api/devices/${deviceId}`, { method: "DELETE", access }),
+};
