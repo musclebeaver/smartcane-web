@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { PaymentsAPI } from "@/lib/api";
 import { LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import ProfileOverview from "./components/ProfileOverview";
 import PaymentsTab from "./components/PaymentsTab";
 import DevicesTab from "./components/DevicesTab";
@@ -12,6 +13,7 @@ import DevicesTab from "./components/DevicesTab";
 export default function ProfilePage() {
   const auth = useAuth();
   const profile = auth?.me;
+  const navigate = useNavigate(); // 로그아웃 시 로그인 화면으로 이동시키기 위해 네비게이터 훅을 준비합니다.
 
   const [tossLoading, setTossLoading] = useState(false);
   const [tossError, setTossError] = useState("");
@@ -19,6 +21,11 @@ export default function ProfilePage() {
 
   const primaryName = profile?.nickname || profile?.name || profile?.email || "사용자";
   const hasAccessToken = Boolean(auth?.accessToken);
+
+  const handleLogout = useCallback(() => {
+    auth.logout(); // 저장된 토큰과 사용자 정보를 지운 뒤
+    navigate("/auth", { replace: true }); // 로그인 화면으로 바로 이동합니다.
+  }, [auth, navigate]);
 
   const handleTossAutopay = async () => {
     // 토스 자동이체 연동 시도 전 간단한 권한 체크를 수행합니다.
@@ -76,7 +83,8 @@ export default function ProfilePage() {
       <Card className="w-full max-w-2xl shadow-xl">
         <CardHeader className="flex justify-between items-center">
           <CardTitle>프로필</CardTitle>
-          <Button variant="ghost" size="icon" onClick={auth.logout} title="로그아웃">
+          {/* 즉시 토큰을 제거하고 로그인 화면으로 보내기 위한 핸들러를 사용합니다. */}
+          <Button variant="ghost" size="icon" onClick={handleLogout} title="로그아웃">
             <LogOut className="h-4 w-4" />
           </Button>
         </CardHeader>

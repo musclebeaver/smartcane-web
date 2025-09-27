@@ -35,12 +35,14 @@ const buttonVariants = cva(
   }
 )
 
-const Button = React.forwardRef(({ className, variant, size, asChild = false, ...props }, ref) => {
+const Button = React.forwardRef(({ className, variant, size, asChild = false, type, ...props }, ref) => {
   const Comp = asChild ? Slot : "button"
   return (
     <Comp
       className={cn(buttonVariants({ variant, size, className }))}
       ref={ref}
+      // 기본 버튼 동작이 원치 않는 폼 제출로 이어지지 않도록 기본 type 을 button 으로 지정합니다.
+      {...(!asChild && { type: type ?? "button" })}
       {...props} />
   );
 })
