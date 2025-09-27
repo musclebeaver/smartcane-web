@@ -29,7 +29,7 @@ const normaliseDeviceList = (payload) => {
   return [];
 };
 
-export default function DevicesTab({ isActive, hasAccessToken, accessToken, renderValue }) {
+export default function DevicesTab({ isActive, hasAccessToken, accessToken, renderValue, userId }) {
   const [devices, setDevices] = useState([]);
   const [devicesLoading, setDevicesLoading] = useState(false);
   const [devicesError, setDevicesError] = useState("");
@@ -53,6 +53,7 @@ export default function DevicesTab({ isActive, hasAccessToken, accessToken, rend
   useEffect(() => {
     if (!isActive) return;
     if (!hasAccessToken) return;
+    if (!userId) return; // 사용자 ID 를 확보한 뒤에만 조회하도록 가드합니다.
     if (devicesFetched) return;
 
     let cancelled = false;
@@ -61,7 +62,7 @@ export default function DevicesTab({ isActive, hasAccessToken, accessToken, rend
       setDevicesLoading(true);
       setDevicesError("");
       try {
-        const response = await DevicesAPI.list(accessToken);
+        const response = await DevicesAPI.list(userId, accessToken);
         if (cancelled) return;
         const list = normaliseDeviceList(response);
         setDevices(Array.isArray(list) ? list : []);
@@ -82,7 +83,7 @@ export default function DevicesTab({ isActive, hasAccessToken, accessToken, rend
     return () => {
       cancelled = true;
     };
-  }, [accessToken, devicesFetched, hasAccessToken, isActive]);
+  }, [accessToken, devicesFetched, hasAccessToken, isActive, userId]);
 
   const refreshDevices = () => {
     // 목록 새로고침을 단순하게 처리하기 위해 fetched 상태만 초기화합니다.

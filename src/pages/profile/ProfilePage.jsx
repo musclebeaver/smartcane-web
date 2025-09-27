@@ -112,6 +112,7 @@ export default function ProfilePage() {
                 isActive={tabValue === "devices"}
                 hasAccessToken={hasAccessToken}
                 accessToken={auth?.accessToken}
+                userId={profile?.id ?? profile?.userId} // 사용자별 디바이스 바인딩 API 를 호출하기 위해 ID 를 전달합니다.
                 renderValue={renderValue}
               />
             </TabsContent>

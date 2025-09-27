@@ -26,7 +26,11 @@ export const PaymentsAPI = {
 };
 
 export const DevicesAPI = {
-  list:    (access)         => api("/api/devices",            { access }),
+  // 사용자별 디바이스 바인딩 목록을 조회하도록 엔드포인트를 변경했습니다.
+  list:    (userId, access) => {
+    if (!userId) throw new Error("사용자 ID가 필요합니다.");
+    return api(`/api/users/${encodeURIComponent(userId)}/device-bindings`, { access });
+  },
   detail:  (deviceId, access) => api(`/api/devices/${deviceId}`, { access }),
   register: (payload, access) => api("/api/devices",          { method: "POST", body: payload, access }),
   remove:  (deviceId, access) => api(`/api/devices/${deviceId}`, { method: "DELETE", access }),
