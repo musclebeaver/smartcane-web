@@ -1,52 +1,27 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
-import { DevicesAPI, PaymentsAPI } from "@/lib/api";
-import { Loader2, LogOut } from "lucide-react";
-
-const PROFILE_SECTIONS = [
-  {
-    title: "기본 정보",
-    fields: [
-      { key: "nickname", label: "닉네임" },
-      { key: "email", label: "이메일" },
-      { key: "birthDate", label: "생년월일" },
-      { key: "phoneNumber", label: "전화번호" },
-    ],
-  },
-  {
-    title: "시스템 정보",
-    fields: [
-      { key: "id", label: "회원 ID" },
-      { key: "createdAt", label: "가입일" },
-      { key: "updatedAt", label: "정보 수정일" },
-      { key: "roles", label: "권한" },
-    ],
-  },
-];
-
-const KNOWN_PROFILE_KEYS = new Set(
-  PROFILE_SECTIONS.flatMap((section) => section.fields.map((field) => field.key))
-);
+import { PaymentsAPI } from "@/lib/api";
+import { LogOut } from "lucide-react";
+import ProfileOverview from "./components/ProfileOverview";
+import PaymentsTab from "./components/PaymentsTab";
+import DevicesTab from "./components/DevicesTab";
 
 export default function ProfilePage() {
   const auth = useAuth();
   const profile = auth?.me;
+
   const [tossLoading, setTossLoading] = useState(false);
   const [tossError, setTossError] = useState("");
   const [tabValue, setTabValue] = useState("profile");
-  const [devices, setDevices] = useState([]);
-  const [devicesLoading, setDevicesLoading] = useState(false);
-  const [devicesError, setDevicesError] = useState("");
-  const [devicesFetched, setDevicesFetched] = useState(false);
 
   const primaryName = profile?.nickname || profile?.name || profile?.email || "사용자";
-
   const hasAccessToken = Boolean(auth?.accessToken);
 
   const handleTossAutopay = async () => {
+    // 토스 자동이체 연동 시도 전 간단한 권한 체크를 수행합니다.
     if (!hasAccessToken) {
       setTossError("자동이체 등록은 로그인 후 이용 가능합니다.");
       return;
@@ -82,12 +57,8 @@ export default function ProfilePage() {
     return `${words[0][0] || ""}${words[1][0] || ""}`.toUpperCase();
   }, [primaryName]);
 
-  const extraEntries = useMemo(() => {
-    if (!profile || typeof profile !== "object") return [];
-    return Object.entries(profile).filter(([key]) => !KNOWN_PROFILE_KEYS.has(key));
-  }, [profile]);
-
-  const renderValue = (value) => {
+  const renderValue = useCallback((value) => {
+    // 화면 전체에서 동일한 렌더링 규칙을 쓰기 위해 함수로 분리했습니다.
     if (value === null || value === undefined || value === "") return "미입력";
     if (Array.isArray(value)) return value.length ? value.join(", ") : "미입력";
     if (value instanceof Date) return value.toLocaleDateString();
@@ -96,73 +67,13 @@ export default function ProfilePage() {
       return keys.length ? JSON.stringify(value) : "미입력";
     }
     return String(value);
-  };
-
-  useEffect(() => {
-    setDevicesFetched(false);
-    setDevices([]);
-    setDevicesError("");
-  }, [auth?.accessToken]);
-
-  useEffect(() => {
-    if (tabValue !== "devices") return;
-    if (!hasAccessToken) return;
-    if (devicesFetched) return;
-
-    let cancelled = false;
-
-    const normaliseDeviceList = (payload) => {
-      if (!payload) return [];
-      if (Array.isArray(payload)) return payload;
-      if (Array.isArray(payload?.devices)) return payload.devices;
-      if (Array.isArray(payload?.items)) return payload.items;
-      if (Array.isArray(payload?.data)) return payload.data;
-      if (Array.isArray(payload?.content)) return payload.content;
-      if (payload?.device && typeof payload.device === "object") return [payload.device];
-      if (typeof payload === "object") {
-        if ("id" in payload || "deviceId" in payload || "serialNumber" in payload) {
-          return [payload];
-        }
-      }
-      return [];
-    };
-
-    const fetchDevices = async () => {
-      setDevicesLoading(true);
-      setDevicesError("");
-      try {
-        const response = await DevicesAPI.list(auth.accessToken);
-        if (cancelled) return;
-        const list = normaliseDeviceList(response);
-        setDevices(Array.isArray(list) ? list : []);
-      } catch (error) {
-        if (cancelled) return;
-        setDevicesError(error?.message || "디바이스 정보를 불러오지 못했습니다.");
-        setDevices([]);
-      } finally {
-        if (!cancelled) {
-          setDevicesLoading(false);
-          setDevicesFetched(true);
-        }
-      }
-    };
-
-    fetchDevices();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [auth?.accessToken, devicesFetched, hasAccessToken, tabValue]);
-
-  const handleReloadDevices = () => {
-    setDevicesFetched(false);
-  };
+  }, []);
 
   if (!profile) return <p className="text-gray-500 text-center">로딩 중...</p>;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
-      <Card className="w-full max-w-md shadow-xl">
+      <Card className="w-full max-w-2xl shadow-xl">
         <CardHeader className="flex justify-between items-center">
           <CardTitle>프로필</CardTitle>
           <Button variant="ghost" size="icon" onClick={auth.logout} title="로그아웃">
@@ -178,133 +89,31 @@ export default function ProfilePage() {
             </TabsList>
 
             <TabsContent value="profile">
-              <div className="space-y-6">
-                <section className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:gap-5 sm:text-left">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold uppercase text-primary">
-                    {initials}
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-lg font-semibold text-gray-900">{primaryName}</p>
-                    <p className="text-sm text-muted-foreground">{renderValue(profile?.email)}</p>
-                  </div>
-                </section>
-
-                {PROFILE_SECTIONS.map((section) => (
-                  <section key={section.title} className="space-y-3">
-                    <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">{section.title}</h2>
-                    <div className="overflow-hidden rounded-xl border border-gray-100">
-                      <dl className="divide-y divide-gray-100">
-                        {section.fields.map((field) => (
-                          <div
-                            key={field.key}
-                            className="flex flex-col gap-1 px-4 py-3 text-left sm:flex-row sm:items-start sm:justify-between"
-                          >
-                            <dt className="text-sm font-medium text-gray-500">{field.label}</dt>
-                            <dd className="text-sm font-semibold text-gray-900 sm:text-right">
-                              {renderValue(profile?.[field.key])}
-                            </dd>
-                          </div>
-                        ))}
-                      </dl>
-                    </div>
-                  </section>
-                ))}
-
-                {extraEntries.length > 0 && (
-                  <section className="space-y-3">
-                    <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">추가 정보</h2>
-                    <div className="overflow-hidden rounded-xl border border-gray-100">
-                      <dl className="divide-y divide-gray-100">
-                        {extraEntries.map(([key, value]) => (
-                          <div
-                            key={key}
-                            className="flex flex-col gap-1 px-4 py-3 text-left sm:flex-row sm:items-start sm:justify-between"
-                          >
-                            <dt className="text-sm font-medium text-gray-500">{key}</dt>
-                            <dd className="text-sm font-semibold text-gray-900 sm:text-right">{renderValue(value)}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                    </div>
-                  </section>
-                )}
-              </div>
+              <ProfileOverview
+                profile={profile}
+                primaryName={primaryName}
+                initials={initials}
+                renderValue={renderValue}
+              />
             </TabsContent>
 
             <TabsContent value="payments">
-              <div className="space-y-3">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">결제 관리</h2>
-                <div className="space-y-2">
-                  <Button
-                    type="button"
-                    onClick={handleTossAutopay}
-                    disabled={!hasAccessToken || tossLoading}
-                    className="w-full bg-[#0064FF] text-white hover:bg-[#0050CC]"
-                  >
-                    {tossLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {tossLoading ? "토스로 이동 중…" : "토스 자동이체 등록"}
-                  </Button>
-                  {tossHelperText && (
-                    <p className={`text-sm ${tossHelperClass}`}>{tossHelperText}</p>
-                  )}
-                </div>
-              </div>
+              <PaymentsTab
+                hasAccessToken={hasAccessToken}
+                tossLoading={tossLoading}
+                tossHelperText={tossHelperText}
+                tossHelperClass={tossHelperClass}
+                onRequestAutopay={handleTossAutopay}
+              />
             </TabsContent>
 
             <TabsContent value="devices">
-              <div className="space-y-4">
-                {!hasAccessToken ? (
-                  <p className="text-sm text-muted-foreground text-center">
-                    디바이스 정보를 확인하려면 로그인 후 이용해주세요.
-                  </p>
-                ) : devicesLoading ? (
-                  <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span className="text-sm">디바이스 정보를 불러오는 중…</span>
-                  </div>
-                ) : devicesError ? (
-                  <div className="space-y-3 text-center">
-                    <p className="text-sm text-red-600">{devicesError}</p>
-                    <Button variant="outline" onClick={handleReloadDevices} disabled={devicesLoading}>
-                      다시 시도
-                    </Button>
-                  </div>
-                ) : devices.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center">등록된 디바이스가 없습니다.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {devices.map((device, index) => {
-                      const entries =
-                        device && typeof device === "object"
-                          ? Object.entries(device)
-                          : [["value", device]];
-                      const key =
-                        device?.id ??
-                        device?.deviceId ??
-                        device?.serialNumber ??
-                        device?.uuid ??
-                        index;
-                      return (
-                        <div key={key} className="overflow-hidden rounded-xl border border-gray-100 p-4">
-                          <dl className="space-y-2">
-                            {entries.map(([entryKey, entryValue]) => (
-                              <div
-                                key={entryKey}
-                                className="flex flex-col gap-1 text-left sm:flex-row sm:items-start sm:justify-between"
-                              >
-                                <dt className="text-sm font-medium text-gray-500">{entryKey}</dt>
-                                <dd className="text-sm font-semibold text-gray-900 sm:text-right">
-                                  {renderValue(entryValue)}
-                                </dd>
-                              </div>
-                            ))}
-                          </dl>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              <DevicesTab
+                isActive={tabValue === "devices"}
+                hasAccessToken={hasAccessToken}
+                accessToken={auth?.accessToken}
+                renderValue={renderValue}
+              />
             </TabsContent>
           </Tabs>
         </CardContent>
