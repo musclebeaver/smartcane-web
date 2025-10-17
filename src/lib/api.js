@@ -35,3 +35,15 @@ export const DevicesAPI = {
   register: (payload, access) => api("/api/devices",          { method: "POST", body: payload, access }),
   remove:  (deviceId, access) => api(`/api/devices/${deviceId}`, { method: "DELETE", access }),
 };
+
+// 관리자가 회원을 조회/등록/정지할 수 있도록 전용 API 래퍼를 추가합니다.
+export const AdminAPI = {
+  listUsers: (access) => api("/api/admin/users", { access }),
+  createUser: (payload, access) => api("/api/admin/users", { method: "POST", body: payload, access }),
+  updateUserStatus: (userId, status, access) =>
+    api(`/api/admin/users/${encodeURIComponent(userId)}/status`, {
+      method: "PATCH",
+      body: { status },
+      access,
+    }),
+};

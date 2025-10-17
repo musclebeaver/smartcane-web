@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
   const [accessToken, setAccessToken] = useState(localStorage.getItem("sc_access") || "");
   const [refreshToken, setRefreshToken] = useState(localStorage.getItem("sc_refresh") || "");
   const [me, setMe] = useState(null);
+  const [isLoadingMe, setIsLoadingMe] = useState(true);
 
   const saveTokens = useCallback((a, r) => {
     setAccessToken(a || "");
@@ -20,11 +21,14 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     saveTokens("", "");
     setMe(null);
+    setIsLoadingMe(false);
   }, [saveTokens]);
 
   const loadMe = useCallback(async () => {
+    setIsLoadingMe(true);
     if (!accessToken) {
       setMe(null);
+      setIsLoadingMe(false);
       return;
     }
     try {
@@ -43,6 +47,8 @@ export function AuthProvider({ children }) {
       } else {
         logout();
       }
+    } finally {
+      setIsLoadingMe(false);
     }
   }, [accessToken, refreshToken, logout, saveTokens]);
 
@@ -51,8 +57,16 @@ export function AuthProvider({ children }) {
   }, [loadMe]);
 
   const value = useMemo(
-    () => ({ accessToken, refreshToken, me, saveTokens, logout, reloadMe: loadMe }),
-    [accessToken, refreshToken, me, saveTokens, logout, loadMe]
+    () => ({
+      accessToken,
+      refreshToken,
+      me,
+      isLoadingMe,
+      saveTokens,
+      logout,
+      reloadMe: loadMe,
+    }),
+    [accessToken, refreshToken, me, isLoadingMe, saveTokens, logout, loadMe]
   );
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
