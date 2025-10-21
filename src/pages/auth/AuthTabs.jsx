@@ -11,6 +11,8 @@ export default function AuthTabs() {
   const nav = useNavigate();
   const location = useLocation();
   const [socialError, setSocialError] = useState("");
+  // 변경 사항: 회원가입 성공 시 로그인 탭으로 전환하기 위해 탭 값을 상태로 제어합니다.
+  const [tabValue, setTabValue] = useState("login");
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -38,13 +40,13 @@ export default function AuthTabs() {
           <CardTitle className="text-center">스마트 지팡이 로그인 / 회원가입</CardTitle>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login" className="w-full">
+          <Tabs value={tabValue} onValueChange={setTabValue} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="login">로그인</TabsTrigger>
               <TabsTrigger value="signup">회원가입</TabsTrigger>
             </TabsList>
             <TabsContent value="login"><LoginForm socialError={socialError} onClearSocialError={() => setSocialError("")} /></TabsContent>
-            <TabsContent value="signup"><SignupForm onSuccess={() => { /* 가입 후 로그인 탭으로 전환하려면 상태로 제어 가능 */ }} /></TabsContent>
+            <TabsContent value="signup"><SignupForm onSuccess={() => setTabValue("login")} /></TabsContent>
           </Tabs>
         </CardContent>
       </Card>
