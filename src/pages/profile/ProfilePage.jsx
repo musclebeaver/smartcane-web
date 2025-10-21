@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import ProfileOverview from "./components/ProfileOverview";
 import PaymentsTab from "./components/PaymentsTab";
 import DevicesTab from "./components/DevicesTab";
+import PointsTab from "./components/PointsTab";
 
 export default function ProfilePage() {
   const auth = useAuth();
@@ -90,8 +91,9 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent>
           <Tabs value={tabValue} onValueChange={setTabValue} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-4">
+            <TabsList className="grid w-full grid-cols-4 mb-4">
               <TabsTrigger value="profile">프로필</TabsTrigger>
+              <TabsTrigger value="points">포인트</TabsTrigger>
               <TabsTrigger value="payments">결제</TabsTrigger>
               <TabsTrigger value="devices">디바이스</TabsTrigger>
             </TabsList>
@@ -102,6 +104,15 @@ export default function ProfilePage() {
                 primaryName={primaryName}
                 initials={initials}
                 renderValue={renderValue}
+              />
+            </TabsContent>
+
+            <TabsContent value="points">
+              <PointsTab
+                isActive={tabValue === "points"}
+                hasAccessToken={hasAccessToken}
+                accessToken={auth?.accessToken}
+                // 포인트 잔액 조회와 충전 기능을 이 탭에서 한꺼번에 처리합니다.
               />
             </TabsContent>
 

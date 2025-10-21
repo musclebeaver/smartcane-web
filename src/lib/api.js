@@ -25,6 +25,14 @@ export const PaymentsAPI = {
   getTossAutopayUrl: (access) => api("/api/payments/toss/autopay", { access }),
 };
 
+export const PointsAPI = {
+  // 포인트 잔액을 조회하기 위한 간단한 헬퍼입니다.
+  getBalance: (access) => api("/api/points/balance", { access }),
+  // 지정된 금액만큼 포인트를 충전하는 엔드포인트를 호출합니다.
+  charge: (amount, access) =>
+    api("/api/points/charge", { method: "POST", body: { amount }, access }),
+};
+
 export const DevicesAPI = {
   // 사용자별 디바이스 바인딩 목록을 조회하도록 엔드포인트를 변경했습니다.
   list:    (userId, access) => {
