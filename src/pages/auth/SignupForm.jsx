@@ -23,11 +23,19 @@ export default function SignupForm({ onSuccess }) {
       setError("이메일 형식을 다시 확인해주세요.");
       return;
     }
+    // 변경 사항: 비밀번호는 8자 초과(즉, 최소 9자)로 입력되도록 토스트와 에러 메시지로 안내합니다.
+    if (password.length <= 8) {
+      toast({ title: "비밀번호 길이 오류", description: "비밀번호는 9자 이상 입력해주세요." });
+      setError("비밀번호는 9자 이상 입력해주세요.");
+      return;
+    }
     if (password !== confirm) { setError("비밀번호 불일치"); return; }
     setError(""); setOk("");
     try {
       await AuthAPI.signup({ email, nickname, birthDate, password });
       setOk("회원가입 성공! 로그인 해주세요.");
+      // 변경 사항: 가입 성공 시 사용자에게 토스트로 알린 뒤 로그인 탭으로 전환되도록 부모 콜백 호출.
+      toast({ title: "회원가입 성공", description: "로그인 탭으로 이동합니다." });
       onSuccess?.();
     } catch (e) { setError(e.message || "회원가입 실패"); }
   };
