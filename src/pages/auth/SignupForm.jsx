@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AuthAPI } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SignupForm({ onSuccess }) {
   const [email, setEmail] = useState("");
@@ -11,9 +12,17 @@ export default function SignupForm({ onSuccess }) {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
+  const { toast } = useToast();
 
   const submit = async (e) => {
     e.preventDefault();
+    // 변경 사항: 기본적인 이메일 패턴을 검사하여 형식이 맞지 않으면 토스트로 사용자에게 안내합니다.
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+      toast({ title: "이메일 형식 오류", description: "올바른 이메일 주소를 입력해주세요." });
+      setError("이메일 형식을 다시 확인해주세요.");
+      return;
+    }
     if (password !== confirm) { setError("비밀번호 불일치"); return; }
     setError(""); setOk("");
     try {
