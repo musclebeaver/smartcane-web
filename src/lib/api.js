@@ -26,8 +26,8 @@ export const PaymentsAPI = {
 };
 
 export const PointsAPI = {
-  // 포인트 잔액을 조회하기 위한 간단한 헬퍼입니다.
-  getBalance: (access) => api("/api/points/balance", { access }),
+  // 백엔드 PointController의 "/api/points/me" 엔드포인트에 맞춰 조회 경로를 수정했습니다.
+  getBalance: (access) => api("/api/points/me", { access }),
   // 지정된 금액만큼 포인트를 충전하는 엔드포인트를 호출합니다.
   charge: (amount, access) =>
     api("/api/points/charge", { method: "POST", body: { amount }, access }),
