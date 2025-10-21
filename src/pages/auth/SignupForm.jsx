@@ -23,13 +23,35 @@ export default function SignupForm({ onSuccess }) {
       setError("이메일 형식을 다시 확인해주세요.");
       return;
     }
-    // 변경 사항: 비밀번호는 8자 초과(즉, 최소 9자)로 입력되도록 토스트와 에러 메시지로 안내합니다.
-    if (password.length <= 8) {
-      toast({ title: "비밀번호 길이 오류", description: "비밀번호는 9자 이상 입력해주세요." });
-      setError("비밀번호는 9자 이상 입력해주세요.");
+    // 변경 사항: 비밀번호는 8자 이상 입력되도록 조건을 완화하고, 토스트와 에러 메시지로 안내합니다.
+    if (password.length < 8) {
+      toast({ title: "비밀번호 길이 오류", description: "비밀번호는 8자 이상 입력해주세요." });
+      setError("비밀번호는 8자 이상 입력해주세요.");
       return;
     }
-    if (password !== confirm) { setError("비밀번호 불일치"); return; }
+    // 변경 사항: 비밀번호와 확인 값이 다르면 즉시 토스트로 알려 사용자 혼선을 줄입니다.
+    if (password !== confirm) {
+      toast({ title: "비밀번호 불일치", description: "비밀번호와 확인 값이 일치하는지 확인해주세요." });
+      setError("비밀번호가 서로 다릅니다.");
+      return;
+    }
+    // 변경 사항: 브라우저 기본 검증 이외에도 YYYY-MM-DD 형식을 검사하여 잘못된 생일 입력 시 토스트로 안내합니다.
+    const birthPattern = /^\d{4}-\d{2}-\d{2}$/;
+    const isBirthFormatValid = birthPattern.test(birthDate);
+    let isBirthDateValid = false;
+    if (isBirthFormatValid) {
+      const [year, month, day] = birthDate.split("-").map(Number);
+      const parsed = new Date(birthDate);
+      isBirthDateValid =
+        parsed.getFullYear() === year &&
+        parsed.getMonth() + 1 === month &&
+        parsed.getDate() === day;
+    }
+    if (!isBirthFormatValid || !isBirthDateValid) {
+      toast({ title: "생일 형식 오류", description: "YYYY-MM-DD 형식으로 올바른 생일을 입력해주세요." });
+      setError("생일 형식을 다시 확인해주세요.");
+      return;
+    }
     setError(""); setOk("");
     try {
       await AuthAPI.signup({ email, nickname, birthDate, password });
