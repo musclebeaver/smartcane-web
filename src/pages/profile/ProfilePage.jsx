@@ -19,6 +19,8 @@ export default function ProfilePage() {
   const [tossLoading, setTossLoading] = useState(false);
   const [tossError, setTossError] = useState("");
   const [tabValue, setTabValue] = useState("profile");
+  const [naverPayHelper, setNaverPayHelper] = useState("");
+  const [kakaoPayHelper, setKakaoPayHelper] = useState("");
 
   const primaryName = profile?.nickname || profile?.name || profile?.email || "사용자";
   const hasAccessToken = Boolean(auth?.accessToken);
@@ -55,6 +57,35 @@ export default function ProfilePage() {
     ? "자동이체 등록은 로그인 후 이용 가능합니다."
     : tossError;
   const tossHelperClass = hasAccessToken && tossError ? "text-red-600" : "text-muted-foreground";
+
+  const handleExternalPayment = useCallback(
+    (provider, envKey, setHelper) => {
+      // 다른 간편결제 버튼 역시 토큰이 없을 때는 안내만 보여 주고 동작을 막습니다.
+      if (!hasAccessToken) {
+        setHelper("로그인 후 이용 가능합니다.");
+        return;
+      }
+
+      const override = import.meta.env?.[envKey];
+      if (override) {
+        setHelper("");
+        window.location.href = override;
+        return;
+      }
+
+      // 아직 백엔드 연동이 준비되지 않은 경우엔 안내 문구만 출력합니다.
+      setHelper(`${provider} 연동은 준비 중입니다.`);
+    },
+    [hasAccessToken],
+  );
+
+  const handleNaverPay = useCallback(() => {
+    handleExternalPayment("네이버페이", "VITE_NAVERPAY_REDIRECT_URL", setNaverPayHelper);
+  }, [handleExternalPayment]);
+
+  const handleKakaoPay = useCallback(() => {
+    handleExternalPayment("카카오페이", "VITE_KAKAOPAY_REDIRECT_URL", setKakaoPayHelper);
+  }, [handleExternalPayment]);
 
   const initials = useMemo(() => {
     if (!primaryName) return "?";
@@ -123,6 +154,10 @@ export default function ProfilePage() {
                 tossHelperText={tossHelperText}
                 tossHelperClass={tossHelperClass}
                 onRequestAutopay={handleTossAutopay}
+                onRequestNaverPay={handleNaverPay}
+                onRequestKakaoPay={handleKakaoPay}
+                naverPayHelperText={naverPayHelper}
+                kakaoPayHelperText={kakaoPayHelper}
               />
             </TabsContent>
 
