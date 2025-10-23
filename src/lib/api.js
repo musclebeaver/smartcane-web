@@ -2,7 +2,11 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081";
 
 export async function api(path, { method = "GET", body, access } = {}) {
   const headers = { "Content-Type": "application/json" };
-  if (access) headers["Authorization"] = `Bearer ${access}`;
+  if (access) {
+    // 백엔드가 이미 "Bearer " 접두사가 붙은 토큰을 내려주는 경우가 있어 중복을 방지합니다.
+    const normalized = access.startsWith("Bearer ") ? access : `Bearer ${access}`;
+    headers["Authorization"] = normalized;
+  }
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers,
