@@ -31,6 +31,9 @@ export const PointsAPI = {
   // 지정된 금액만큼 포인트를 충전하는 엔드포인트를 호출합니다.
   charge: (amount, access) =>
     api("/api/points/charge", { method: "POST", body: { amount }, access }),
+  // 결제 요청이 들어오면 백엔드의 포인트 차감 로직을 호출합니다.
+  pay: (amount, access) =>
+    api("/api/points/pay", { method: "POST", body: { amount }, access }),
 };
 
 export const DevicesAPI = {
